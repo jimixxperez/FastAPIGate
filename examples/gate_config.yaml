@@ -1,21 +1,23 @@
 globalPolicies:
   inbound:
-    - id: "jwt_auth"
-      config:
+    - jwt_auth:
         jwk_url: "https://auth.example.com/jwks"
         audience: "my-audience"
         issuer: "https://auth.example.com/"
-  backend:
-    - id: "rate_limit"
-      config:
+    - rate_limit:
         requests_per_minute: 50
+        requests_per_minute_per_ip: 10
+        requests_per_minute_per_user: 10
+        requests_per_minute_per_user_per_ip: 10
+  backend:
+    - set_header:
+        key: "X-Custom-Header"
   outbound: []
   onError:
-    - id: "retry"
-      config:
+    - retry:
         max_attempts: 3
         backoff_seconds: 1.0
-    - id: "custom_error_response"
+    - custom_error_response:
       config:
         error_code: "GLOBAL_FAILURE"
         status_code: 500

@@ -1,10 +1,11 @@
-from typing import Any, Optional, Protocol, TypeVar, Generic
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Any, Optional, Protocol, TypeVar, Generic, TypeAlias
+from pydantic import BaseModel, Field, ConfigDict, TypeAdapter
 from pydantic.alias_generators import to_camel
 
-class RawPolicyEntry(BaseModel):
-    id: str
-    config: dict[str, Any] 
+
+PolicyId: TypeAlias = str
+PolicyConfig: TypeAlias = dict[str, Any]
+RawPolicyEntry: TypeAlias = dict[PolicyId, PolicyConfig]
 
 class PhasePolicies(BaseModel):
     inbound: list[RawPolicyEntry] = Field(default_factory=list)
