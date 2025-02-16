@@ -1,6 +1,7 @@
 from typing import Any, Optional, Protocol, TypeVar, Generic
 from pydantic import BaseModel, Field
 from fastapi import Request, Response
+from core.types import BasePolicy
 
 
 class RawPolicyEntry(BaseModel):
@@ -19,38 +20,39 @@ class GatewayConfig(BaseModel):
     #
 PolicyConfig = TypeVar("PolicyConfig", bound=BaseModel)
 
-class BasePolicy(Generic[PolicyConfig]):
-    config: PolicyConfig
+from dataclasses import dataclass
 
-    """A simple multi-phase policy base with default no-ops."""
-    async def inbound(self, request: Request) -> Optional[Response]:
-        ...
-    async def backend(self, request: Request) -> Optional[Response]:
-        ...
-    async def outbound(self, request: Request, response: Response) -> Optional[Response]:
-        ...
-    async def on_error(self, request: Request, exc: Exception, context: dict[str, Any]) -> Optional[Response]:
-        ...
+#@dataclass
+#class BasePolicy(Generic[PolicyConfig]):
+#    config: PolicyConfig
+#
+#    """A simple multi-phase policy base with default no-ops."""
+#    async def inbound(self, request: Request) -> Optional[Response]:
+#        return None
+#        
+#    async def backend(self, request: Request) -> Optional[Response]:
+#        return None
+#
+#    async def outbound(self, request: Request, response: Response) -> Optional[Response]:
+#        return None
+#
+#    async def on_error(self, request: Request, exc: Exception, context: dict[str, Any]) -> Optional[Response]:
+#        return None
 
 from dataclasses import dataclass, field
 from typing import NamedTuple, Type
 
-class PolicyRegistryEntry(NamedTuple):
-    config_model: Type[BaseModel]
-    policy: BasePolicy
 
 @dataclass
 class PolicyRegistry:
-    _registry: dict[str, PolicyRegistryEntry] = field(default_factory=dict)
+    _registry: dict[str, Type[BasePolicy]] = field(default_factory=dict)
 
-    def register(self, id: str, config: Type[BaseModel], policy: BasePolicy):
-        self._registry[id] = PolicyRegistryEntry(config, policy)
+    def register(self, id: str,  policy: Type[BasePolicy]):
+        self._registry[id] = policy
 
-    def get(self, id: str) -> PolicyRegistryEntry:
+    def get(self, id: str) -> Type[BasePolicy[Any]]:
         if id not in self._registry:
             raise ValueError(f"Unknown policy id: {id}")
         return self._registry[id]
-
-     
 
 
