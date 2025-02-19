@@ -1,7 +1,7 @@
 from typing import Any, Optional, Protocol, TypeVar, Generic
 from pydantic import BaseModel, Field
 from fastapi import Request, Response
-from core.types import BasePolicy
+from fastapigate.core.types import BasePolicy
 
 
 

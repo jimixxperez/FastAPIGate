@@ -1,11 +1,12 @@
 import logging 
 from contextvars import ContextVar
+from types import TracebackType
 from typing import AsyncIterable, Awaitable, Callable, Iterable, Optional, Type, get_args, cast, Any
 from typing import AsyncIterable, Iterable, Optional, Type, get_args, cast, Any
 
-from core.policy import PolicyRegistry
-from core.types import BasePolicy
-from core.config import GatewayConfig
+from fastapigate.core.policy import PolicyRegistry
+from fastapigate.core.types import BackendPolicy, BasePolicy, InboundPolicy, OnErrorPolicy, OutboundPolicy, Policy
+from fastapigate.core.config import GatewayConfig
 from dataclasses import dataclass, field
 
 from fastapi import Request
@@ -16,9 +17,10 @@ logger = logging.getLogger(__name__)
 
 gateway_context: ContextVar[dict[str, Any]] = ContextVar("GatewayContextVar")
 
-def _get_policy_config_class_from_generic(policy: Type[BasePolicy]) -> Type[BaseModel]:
+def _get_policy_config_class_from_generic(policy: Type[Policy]) -> Type[BaseModel]:
     policy_class = cast(Type[BaseModel], get_args(policy.__orig_bases__[0])[0])
     return policy_class
+
 
 @dataclass
 class GatewayContext:
@@ -66,7 +68,7 @@ class GatewayContext:
                 return response
             return backend_response
         except Exception as exc:
-            response = await self.call_on_error(request, exc, context)
+            response = await self.call_on_error(request, exc, dict())
             if response:
                 return response
             raise exc
@@ -76,10 +78,10 @@ class Gateway:
     gateway_config: GatewayConfig
     policy_registry: PolicyRegistry
 
-    _inbound_policies: list[BasePolicy] = field(default_factory=list)
-    _backend_policies: list[BasePolicy] = field(default_factory=list)
-    _outbound_policies: list[BasePolicy] = field(default_factory=list)
-    _on_error_policies: list[BasePolicy] = field(default_factory=list)
+    _inbound_policies: list[InboundPolicy] = field(default_factory=list)
+    _backend_policies: list[BackendPolicy] = field(default_factory=list)
+    _outbound_policies: list[OutboundPolicy] = field(default_factory=list)
+    _on_error_policies: list[OnErrorPolicy] = field(default_factory=list)
 
     def _setup_policies(self, policy_id: str, policy_config: dict[str, Any]) -> BasePolicy:
         PolicyClass = self.policy_registry.get(policy_id)
@@ -97,6 +99,8 @@ class Gateway:
             policy_id = list(inbound_policy_config.keys())[0]
             policy_config = inbound_policy_config[policy_id]
             base_policy = self._setup_policies(policy_id, policy_config)
+            if not isinstance(base_policy, InboundPolicy):
+                raise ValueError(f"Inbound policy {policy_id} is not an InboundPolicy")
             self._inbound_policies.append(base_policy)
 
         logger.debug("Backend policies")
@@ -104,6 +108,8 @@ class Gateway:
             policy_id = list(backend_policy_config.keys())[0]
             policy_config = backend_policy_config[policy_id]
             base_policy = self._setup_policies(policy_id, policy_config)
+            if not isinstance(base_policy, BackendPolicy):
+                raise ValueError(f"Backend policy {policy_id} is not a BackendPolicy")
             self._backend_policies.append(base_policy)
 
         logger.debug("Outbound policies")
@@ -111,6 +117,8 @@ class Gateway:
             policy_id = list(outbound_policy_config.keys())[0]
             policy_config = outbound_policy_config[policy_id]
             base_policy = self._setup_policies(policy_id, policy_config)
+            if not isinstance(base_policy, OutboundPolicy):
+                raise ValueError(f"Outbound policy {policy_id} is not an OutboundPolicy")
             self._outbound_policies.append(base_policy)
 
         logger.debug("On Error policies")
@@ -118,6 +126,8 @@ class Gateway:
             policy_id = list(on_error_policy_config.keys())[0]
             policy_config = on_error_policy_config[policy_id]
             base_policy = self._setup_policies(policy_id, policy_config)
+            if not isinstance(base_policy, OnErrorPolicy):
+                raise ValueError(f"On Error policy {policy_id} is not an OnErrorPolicy")
             self._on_error_policies.append(base_policy)
 
     def __call__(self, call_next: Callable[[Request], Awaitable[Response]]) -> GatewayContext:

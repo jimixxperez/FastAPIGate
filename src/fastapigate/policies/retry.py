@@ -2,7 +2,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import Optional
 
-from fast_api_gate.core.types import BasePolicy
+from fastapigate.core.types import BasePolicy
 from fastapi import Request, Response
 from pydantic import BaseModel
 
@@ -12,7 +12,6 @@ class RetryPolicyConfig(BaseModel):
 
 @dataclass
 class RetryPolicy(BasePolicy[RetryPolicyConfig]):
-    config: RetryPolicyConfig
 
     async def on_error(self, request: Request, exc: Exception, context: dict) -> Optional[Response]:
         """
