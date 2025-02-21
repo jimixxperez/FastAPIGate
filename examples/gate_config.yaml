@@ -1,9 +1,11 @@
 globalPolicies:
   inbound:
-    #- jwt_auth:
-    #    jwk_url: "https://auth.example.com/jwks"
-    #    audience: "my-audience"
-    #    issuer: "https://auth.example.com/"
+    # Auth0 JWT Auth (For testing)
+    - jwt_auth:
+        jwk_url: "https://dev-dej0y58ibefglict.us.auth0.com/.well-known/jwks.json"
+        audience: "test-api"
+        issuer: "https://dev-dej0y58ibefglict.us.auth0.com/"
+        algorithms: ["RS256"]
     - rate_limit:
         requests_per_minute: 50
         requests_per_minute_per_user_per_ip: 10
